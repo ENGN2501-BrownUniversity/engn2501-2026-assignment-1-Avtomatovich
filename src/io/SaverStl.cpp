@@ -5,7 +5,7 @@
 //
 // SaverStl.cpp
 //
-// Written by: <Your Name>
+// Written by: Samson Tsegai
 //
 // Software developed for the course
 // Digital Geometry Processing
@@ -63,27 +63,45 @@ bool SaverStl::save(const char* filename, SceneGraph& wrl) const {
     // 4) the IndexedFaceSet should be a triangle mesh
     // 5) the IndexedFaceSet should have normals per face
 
-    // if (all the conditions are satisfied) {
+    if (wrl.getNumberOfChildren() == 1) {
+        pNode node = wrl.getChildren().front();
 
-    FILE* fp = fopen(filename,"w");
-    if(	fp!=(FILE*)0) {
+        if (node->isShape() && node->isIndexedFaceSet()) {
+            IndexedFaceSet *pIfs = dynamic_cast<IndexedFaceSet*>(node);
 
-      // if set, use ifs->getName()
-      // otherwise use filename,
-      // but first remove directory and extension
+            if (pIfs->isTriangleMesh() && pIfs->getNumberOfNormal() == pIfs->getNumberOfFaces()) {
+                Faces faces(pIfs->getNumberOfCoord(), pIfs->getCoordIndex());
 
-      fprintf(fp,"solid %s\n",filename);
+                // if (all the conditions are satisfied) {
 
-      // TODO ...
-      // for each face {
-      //   ...
-      // }
-      
-      fclose(fp);
-      success = true;
+                FILE* fp = fopen(filename,"w");
+                if(	fp!=(FILE*)0) {
+
+                    // if set, use ifs->getName()
+                    // otherwise use filename,
+                    // but first remove directory and extension
+
+                    fprintf(fp,"solid %s\n",filename);
+
+                    // TODO ...
+                    // for each face {
+                    //   ...
+                    // }
+
+
+
+                    fclose(fp);
+                    success = true;
+                }
+
+                // } endif (all the conditions are satisfied)
+
+            }
+
+        }
+
     }
 
-    // } endif (all the conditions are satisfied)
 
   }
   return success;
