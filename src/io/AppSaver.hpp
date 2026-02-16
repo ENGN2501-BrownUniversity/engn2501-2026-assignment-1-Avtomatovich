@@ -38,6 +38,7 @@
 #include <map>
 #include <string>
 #include "SaverWrl.hpp"
+#include "SaverStl.hpp"
 
 using namespace std;
 

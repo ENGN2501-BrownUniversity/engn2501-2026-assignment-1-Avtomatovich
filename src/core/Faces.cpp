@@ -95,8 +95,8 @@ int Faces::getFaceSize(const int iF) const {
     int iC = getFaceFirstCorner(iF);
     if (iC < 0) return 0;
 
-    int size = 1;
-    for ( ; _coordIndex[iC] > 0; iC++) size++;
+    int size = 0;
+    for ( ; _coordIndex[iC] >= 0; iC++) size++;
     return size;
 }
 

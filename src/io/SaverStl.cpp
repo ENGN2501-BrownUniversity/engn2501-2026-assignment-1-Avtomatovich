@@ -43,66 +43,85 @@
 
 #include "core/Faces.hpp"
 
+#include <filesystem>
+
 const char* SaverStl::_ext = "stl";
 
 //////////////////////////////////////////////////////////////////////
 bool SaverStl::save(const char* filename, SceneGraph& wrl) const {
-  bool success = false;
-  if(filename!=(char*)0) {
+    bool success = false;
+    if (filename != (char*)0) {
 
-    // Check these conditions
+        // Check these conditions
 
-    // 1) the SceneGraph should have a single child
-    // 2) the child should be a Shape node
-    // 3) the geometry of the Shape node should be an IndexedFaceSet node
-
-    // - construct an instance of the Faces class from the IndexedFaceSet
-    // - remember to delete it when you are done with it (if necessary)
-    //   before returning
-
-    // 4) the IndexedFaceSet should be a triangle mesh
-    // 5) the IndexedFaceSet should have normals per face
-
-    if (wrl.getNumberOfChildren() == 1) {
+        // 1) the SceneGraph should have a single child
+        if (wrl.getNumberOfChildren() != 1) return success;
         pNode node = wrl.getChildren().front();
 
-        if (node->isShape() && node->isIndexedFaceSet()) {
-            IndexedFaceSet *pIfs = dynamic_cast<IndexedFaceSet*>(node);
+        // 2) the child should be a Shape node
+        if (!node->isShape()) return success;
+        Shape *pShape = dynamic_cast<Shape*>(node);
 
-            if (pIfs->isTriangleMesh() && pIfs->getNumberOfNormal() == pIfs->getNumberOfFaces()) {
-                Faces faces(pIfs->getNumberOfCoord(), pIfs->getCoordIndex());
+        // 3) the geometry of the Shape node should be an IndexedFaceSet node
+        if (!pShape->hasGeometryIndexedFaceSet()) return success;
+        IndexedFaceSet *pIfs = dynamic_cast<IndexedFaceSet*>(pShape->getGeometry());
 
-                // if (all the conditions are satisfied) {
+        // - construct an instance of the Faces class from the IndexedFaceSet
+        // - remember to delete it when you are done with it (if necessary)
+        //   before returning
+        Faces faces(pIfs->getNumberOfCoord(), pIfs->getCoordIndex());
 
-                FILE* fp = fopen(filename,"w");
-                if(	fp!=(FILE*)0) {
+        // 4) the IndexedFaceSet should be a triangle mesh
+        // 5) the IndexedFaceSet should have normals per face
+        if (pIfs->isTriangleMesh() && pIfs->getNormalBinding() == IndexedFaceSet::PB_PER_FACE) {
+            FILE* fp = fopen(filename,"w");
 
-                    // if set, use ifs->getName()
-                    // otherwise use filename,
-                    // but first remove directory and extension
+            if(fp != (FILE*)0) {
+                string solidName = pIfs->getName();
+                if (solidName.empty()) {
+                    solidName = std::filesystem::path(filename).stem().string();
+                }
+                fprintf(fp,"solid %s\n",solidName.c_str());
 
-                    fprintf(fp,"solid %s\n",filename);
+                const vector<float>& normals = pIfs->getNormal();
+                const vector<float>& coords = pIfs->getCoord();
 
-                    // TODO ...
-                    // for each face {
-                    //   ...
-                    // }
-
-
-
-                    fclose(fp);
-                    success = true;
+                int nF = faces.getNumberOfFaces();
+                if (nF == 0) {
+                    throw std::runtime_error("Number of faces is 0");
                 }
 
-                // } endif (all the conditions are satisfied)
+                for (int iF = 0; iF < nF; ++iF) {
+                    int iN = 3 * iF;
+                    fprintf(fp,"facet normal %e %e %e\n",
+                            normals.at(iN), normals.at(iN+1), normals.at(iN+2));
+                    fprintf(fp,"  outer loop\n");
 
+                    int faceSize = faces.getFaceSize(iF);
+                    if (faceSize == 0) {
+                        throw std::runtime_error("Face has size of 0");
+                    }
+
+                    for (int j = 0; j < faceSize; ++j) {
+                        int iV = 3 * faces.getFaceVertex(iF, j);
+                        if (iV < 0) {
+                            throw std::runtime_error("Coord index out of range");
+                        }
+
+                        fprintf(fp,"    vertex %e %e %e\n",
+                                coords.at(iV), coords.at(iV+1), coords.at(iV+2));
+                    }
+
+                    fprintf(fp,"  endloop\n");
+                    fprintf(fp,"endfacet\n");
+                }
+
+                fclose(fp);
+                success = true;
             }
 
         }
 
     }
-
-
-  }
-  return success;
+    return success;
 }
