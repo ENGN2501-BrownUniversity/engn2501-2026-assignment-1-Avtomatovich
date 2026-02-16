@@ -5,7 +5,7 @@
 //
 // LoaderStl.hpp
 //
-// Written by: <Your Name>
+// Written by: Samson Tsegai
 //
 // Software developed for the course
 // Digital Geometry Processing
@@ -42,19 +42,28 @@
 
 #include "wrl/Node.hpp"
 
+#include <unordered_map>
+#include <wrl/IndexedFaceSet.hpp>
+
 class LoaderStl : public Loader {
 
 private:
 
-  const static char* _ext;
+    const static char* _ext;
 
 public:
 
-  LoaderStl()  {};
-  ~LoaderStl() {};
+    LoaderStl()  {};
+    ~LoaderStl() {};
 
-  bool  load(const char* filename, SceneGraph& wrl);
-  const char* ext() const { return _ext; }
+    bool  load(const char* filename, SceneGraph& wrl);
+    const char* ext() const { return _ext; }
+
+private:
+
+    unordered_map<string, int> vertexToIdx;
+
+    bool loadFace(Tokenizer& tkn, IndexedFaceSet& ifs);
 
 };
 

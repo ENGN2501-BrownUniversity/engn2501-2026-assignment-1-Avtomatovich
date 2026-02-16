@@ -5,7 +5,7 @@
 //
 // Faces.cpp
 //
-// Written by: <Your Name>
+// Written by: Samson Tsegai
 //
 // Software developed for the course
 // Digital Geometry Processing
@@ -34,50 +34,101 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <unordered_set>
+#include <stdexcept>
 #include <math.h>
 #include "Faces.hpp"
-  
-Faces::Faces(const int nV, const vector<int>& coordIndex) {
-  // TODO
+
+Faces::Faces(const int nV, const vector<int>& coordIndex) :
+    _nV(nV), _nF(0), _nC(static_cast<int>(coordIndex.size())), _coordIndex(coordIndex)
+{
+    try {
+        if (_nV <= 0) {
+            throw std::invalid_argument("Invalid number of vertices in Faces class");
+        }
+
+        if (_coordIndex.empty()) {
+            throw std::invalid_argument("Empty coordIndex in Faces class");
+        }
+
+        unordered_set<int> face;
+
+        for (int i = 0; i < _coordIndex.size(); ++i) {
+            int v = _coordIndex[i];
+
+            if (v < -1) {
+                throw std::invalid_argument("Invalid coord index in Faces class");
+            }
+
+            if (v == -1) {
+                if (face.size() < 3) {
+                    throw std::invalid_argument("Face has less than 3 vertices");
+                }
+                face.clear();
+
+                _coordIndex[i] = -(++_nF);
+            } else {
+                if (!face.insert(v).second) {
+                    throw std::invalid_argument("Face has repeated vertices");
+                }
+
+                if (face.size() == 1) _firstCornerFace.push_back(i);
+
+                if (v == _nV) _nV++;
+            }
+        }
+    } catch (exception& e) {
+        fprintf(stderr,"ERROR | %s\n", e.what());
+    }
+
 }
 
 int Faces::getNumberOfVertices() const {
-  // TODO
-  return 0;
+    return _nV;
 }
 
 int Faces::getNumberOfFaces() const {
-  // TODO
-  return 0;
+    return _nF;
 }
 
 int Faces::getNumberOfCorners() const {
-  // TODO
-  return 0;
+    return _nC;
 }
 
 int Faces::getFaceSize(const int iF) const {
-  // TODO
-  return 0;
+    int iC = getFaceFirstCorner(iF);
+    if (iC < 0) return 0;
+
+    int size = 0;
+    for ( ; _coordIndex[iC] >= 0; iC++) size++;
+    return size;
 }
 
 int Faces::getFaceFirstCorner(const int iF) const {
-  // TODO
-  return -1;
+    return iF >= 0 && iF < _nF ? _firstCornerFace[iF] : -1;
 }
 
 int Faces::getFaceVertex(const int iF, const int j) const {
-  // TODO
-  return -1;
+    int iC = getFaceFirstCorner(iF);
+    return (iC >= 0 && j >= 0 && j < getFaceSize(iF)) ?
+               _coordIndex[iC + j] : -1;
 }
 
 int Faces::getCornerFace(const int iC) const {
-  // TODO
-  return -1;
+    if (iC >= 0 && iC < _nC && _coordIndex[iC] > -1) {
+        for (int i = iC + 1; i < _nC; i++) {
+            if (_coordIndex[i] < 0) return -_coordIndex[i] - 1;
+        }
+    }
+    return -1;
 }
 
 int Faces::getNextCorner(const int iC) const {
-  // TODO
-  return -1;
+    if (iC >= 0 && iC < _nC && _coordIndex[iC] > -1) {
+        return (_coordIndex[iC + 1] < 0) ?
+                   getFaceFirstCorner(getCornerFace(iC)) :
+                   iC + 1;
+    }
+    return -1;
 }
 

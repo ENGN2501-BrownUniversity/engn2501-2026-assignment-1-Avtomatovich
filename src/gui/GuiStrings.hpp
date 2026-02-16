@@ -1,3 +1,4 @@
+
 //------------------------------------------------------------------------
 //  Copyright (C) Gabriel Taubin
 //  Time-stamp: <2026-01-26 17:42:17 taubin>
@@ -32,4 +33,4 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#define STUDENT_NAME "Gabriel Taubin"
+#define STUDENT_NAME "Samson Tsegai"

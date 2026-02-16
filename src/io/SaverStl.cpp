@@ -5,7 +5,7 @@
 //
 // SaverStl.cpp
 //
-// Written by: <Your Name>
+// Written by: Samson Tsegai
 //
 // Software developed for the course
 // Digital Geometry Processing
@@ -36,55 +36,91 @@
 
 #include "SaverStl.hpp"
 
+#include "StrException.hpp"
 #include "wrl/Shape.hpp"
-#include "wrl/Appearance.hpp"
-#include "wrl/Material.hpp"
 #include "wrl/IndexedFaceSet.hpp"
 
 #include "core/Faces.hpp"
+
+#include <filesystem>
 
 const char* SaverStl::_ext = "stl";
 
 //////////////////////////////////////////////////////////////////////
 bool SaverStl::save(const char* filename, SceneGraph& wrl) const {
-  bool success = false;
-  if(filename!=(char*)0) {
+    bool success = false;
+    if (filename != (char*)0) {
 
-    // Check these conditions
+        if (wrl.getNumberOfChildren() != 1) return success;
+        pNode node = wrl.getChildren().front();
 
-    // 1) the SceneGraph should have a single child
-    // 2) the child should be a Shape node
-    // 3) the geometry of the Shape node should be an IndexedFaceSet node
+        if (!node->isShape()) return success;
+        Shape *pShape = dynamic_cast<Shape*>(node);
 
-    // - construct an instance of the Faces class from the IndexedFaceSet
-    // - remember to delete it when you are done with it (if necessary)
-    //   before returning
+        if (!pShape->hasGeometryIndexedFaceSet()) return success;
+        IndexedFaceSet *pIfs = dynamic_cast<IndexedFaceSet*>(pShape->getGeometry());
 
-    // 4) the IndexedFaceSet should be a triangle mesh
-    // 5) the IndexedFaceSet should have normals per face
+        Faces faces(pIfs->getNumberOfCoord(), pIfs->getCoordIndex());
 
-    // if (all the conditions are satisfied) {
+        if (pIfs->isTriangleMesh() && pIfs->getNormalBinding() == IndexedFaceSet::PB_PER_FACE) {
+            FILE* fp = fopen(filename,"w");
 
-    FILE* fp = fopen(filename,"w");
-    if(	fp!=(FILE*)0) {
+            try {
 
-      // if set, use ifs->getName()
-      // otherwise use filename,
-      // but first remove directory and extension
+                if(fp != (FILE*)0) {
+                    string solidName = pIfs->getName();
+                    if (solidName.empty()) {
+                        solidName = std::filesystem::path(filename).stem().string();
+                    }
+                    fprintf(fp,"solid %s\n",solidName.c_str());
 
-      fprintf(fp,"solid %s\n",filename);
+                    const vector<float>& normal = pIfs->getNormal();
+                    const vector<float>& coord = pIfs->getCoord();
 
-      // TODO ...
-      // for each face {
-      //   ...
-      // }
-      
-      fclose(fp);
-      success = true;
+                    int nF = faces.getNumberOfFaces();
+                    if (nF == 0) {
+                        throw new StrException("Number of faces is 0");
+                    }
+
+                    for (int iF = 0; iF < nF; ++iF) {
+                        int iN = 3 * iF;
+                        fprintf(fp,"facet normal %e %e %e\n",
+                                normal.at(iN), normal.at(iN+1), normal.at(iN+2));
+                        fprintf(fp,"\touter loop\n");
+
+                        int faceSize = faces.getFaceSize(iF);
+                        if (faceSize == 0) {
+                            throw new StrException("Face has size of 0");
+                        }
+
+                        for (int j = 0; j < faceSize; ++j) {
+                            int iV = 3 * faces.getFaceVertex(iF, j);
+                            if (iV < 0) {
+                                throw new StrException("Coord index out of range");
+                            }
+
+                            fprintf(fp,"\t\tvertex %e %e %e\n",
+                                    coord.at(iV), coord.at(iV+1), coord.at(iV+2));
+                        }
+
+                        fprintf(fp,"\tendloop\n");
+                        fprintf(fp,"endfacet\n");
+                    }
+
+                    fclose(fp);
+                    success = true;
+                }
+
+            } catch (StrException* e) {
+
+                if(fp != (FILE*)0) fclose(fp);
+                fprintf(stderr,"ERROR | %s\n",e->what());
+                delete e;
+
+            }
+
+        }
+
     }
-
-    // } endif (all the conditions are satisfied)
-
-  }
-  return success;
+    return success;
 }
