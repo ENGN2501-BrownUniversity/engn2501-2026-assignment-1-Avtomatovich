@@ -5,7 +5,7 @@
 //
 // LoaderStl.cpp
 //
-// Written by: <Your Name>
+// Written by: Samson Tsegai
 //
 // Software developed for the course
 // Digital Geometry Processing
@@ -49,71 +49,131 @@
 
 const char* LoaderStl::_ext = "stl";
 
+bool LoaderStl::loadFace(Tokenizer& tkn, IndexedFaceSet& ifs) {
+    bool success = false;
+
+    vector<int>& coordIndex = ifs.getCoordIndex();
+    vector<float>& coord = ifs.getCoord();
+    vector<float>& normal = ifs.getNormal();
+
+    if (tkn.equals("facet") && tkn.expecting("normal")) {
+        Vec3f n;
+        if (!tkn.getVec3f(n)) {
+            throw new StrException("expecting Vec3f");
+        }
+        normal.push_back(n.x);
+        normal.push_back(n.y);
+        normal.push_back(n.z);
+    } else {
+        throw new StrException("expected \"facet normal\"");
+    }
+
+    if (tkn.expecting("outer") && tkn.expecting("loop")) {
+        while (tkn.expecting("vertex")) {
+            Vec3f v;
+            if (!tkn.getVec3f(v)) {
+                throw new StrException("expecting Vec3f");
+            }
+
+            string k = to_string(v.x) + to_string(v.y) + to_string(v.z);
+
+            if (vertexToIdx.find(k) == vertexToIdx.end()) {
+                int idx = static_cast<int>(coord.size() / 3);
+                coordIndex.push_back(idx);
+                vertexToIdx[k] = idx;
+                coord.push_back(v.x);
+                coord.push_back(v.y);
+                coord.push_back(v.z);
+            } else {
+                coordIndex.push_back(vertexToIdx[k]);
+            }
+        }
+    } else {
+        throw new StrException("expected \"outer loop\"");
+    }
+
+    if (tkn.equals("endloop") && tkn.expecting("endfacet")) {
+        coordIndex.push_back(-1);
+    } else {
+        throw new StrException("expected \"endloop\" and \"endfacet\"");
+    }
+
+    success = true;
+    return success;
+}
+
 bool LoaderStl::load(const char* filename, SceneGraph& wrl) {
-  bool success = false;
+    bool success = false;
 
-  // clear the scene graph
-  wrl.clear();
-  wrl.setUrl("");
+    // clear the scene graph
+    wrl.clear();
+    wrl.setUrl("");
 
-  FILE* fp = (FILE*)0;
-  try {
+    FILE* fp = (FILE*)0;
+    try {
 
-    // open the file
-    if(filename==(char*)0) throw new StrException("filename==null");
-    fp = fopen(filename,"r");
-    if(fp==(FILE*)0) throw new StrException("fp==(FILE*)0");
+        // open the file
+        if(filename==(char*)0) throw new StrException("filename==null");
+        fp = fopen(filename,"r");
+        if(fp==(FILE*)0) throw new StrException("fp==(FILE*)0");
 
-    // use the io/Tokenizer class to parse the input ascii file
+        // use the io/Tokenizer class to parse the input ascii file
+        TokenizerFile tkn(fp);
+        // first token should be "solid"
+        if(tkn.expecting("solid") && tkn.get()) {
+            string stlName = tkn; // second token should be the solid name
 
-    TokenizerFile tkn(fp);
-    // first token should be "solid"
-    if(tkn.expecting("solid") && tkn.get()) {
-      string stlName = tkn; // second token should be the solid name
+            Shape* s = new Shape();
+            wrl.addChild(s);
 
-      // TODO ...
+            Appearance* a = new Appearance();
+            s->setAppearance(a);
 
-      // create the scene graph structure :
-      // 1) the SceneGraph should have a single Shape node a child
-      // 2) the Shape node should have an Appearance node in its appearance field
-      // 3) the Appearance node should have a Material node in its material field
-      // 4) the Shape node should have an IndexedFaceSet node in its geometry node
+            Material* m = new Material();
+            a->setMaterial(m);
 
-      // from the IndexedFaceSet
-      // 5) get references to the coordIndex, coord, and normal arrays
-      // 6) set the normalPerVertex variable to false (i.e., normals per face)  
+            IndexedFaceSet* ifs = new IndexedFaceSet();
+            s->setGeometry(ifs);
 
-      // the file should contain a list of triangles in the following format
+            ifs->setNormalPerVertex(false);
+            ifs->setName(stlName);
 
-      // facet normal ni nj nk
-      //   outer loop
-      //     vertex v1x v1y v1z
-      //     vertex v2x v2y v2z
-      //     vertex v3x v3y v3z
-      //   endloop
-      // endfacet
+            // the file should contain a list of triangles in the following format
 
-      // - run an infinite loop to parse all the faces
-      // - write a private method to parse each face within the loop
-      // - the method should return true if successful, and false if not
-      // - if your method returns tru
-      //     update the normal, coord, and coordIndex variables
-      // - if your method returns false
-      //     throw an StrException explaining why the method failed
+            // facet normal ni nj nk
+            //   outer loop
+            //     vertex v1x v1y v1z
+            //     vertex v2x v2y v2z
+            //     vertex v3x v3y v3z
+            //   endloop
+            // endfacet
+
+            // - run an infinite loop to parse all the faces
+            // - write a private method to parse each face within the loop
+            // - the method should return true if successful, and false if not
+            // - if your method returns tru
+            //     update the normal, coord, and coordIndex variables
+            // - if your method returns false
+            //     throw an StrException explaining why the method failed
+
+            while (tkn.get()) {
+                loadFace(tkn, *ifs);
+            }
+
+        }
+
+        // close the file (this statement may not be reached)
+        fclose(fp);
+        success = true;
+    
+    } catch(StrException* e) {
+
+        if(fp!=(FILE*)0) fclose(fp);
+        fprintf(stderr,"ERROR | %s\n",e->what());
+        delete e;
 
     }
 
-    // close the file (this statement may not be reached)
-    fclose(fp);
-    
-  } catch(StrException* e) { 
-    
-    if(fp!=(FILE*)0) fclose(fp);
-    fprintf(stderr,"ERROR | %s\n",e->what());
-    delete e;
-
-  }
-
-  return success;
+    return success;
 }
 

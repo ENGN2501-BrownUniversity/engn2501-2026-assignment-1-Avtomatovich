@@ -38,43 +38,47 @@
 #include <stdexcept>
 #include <math.h>
 #include "Faces.hpp"
-  
+
 Faces::Faces(const int nV, const vector<int>& coordIndex) :
-    _nV(nV), _nF(0), _nC(coordIndex.size()), _coordIndex(coordIndex)
+    _nV(nV), _nF(0), _nC(static_cast<int>(coordIndex.size())), _coordIndex(coordIndex)
 {
-    if (_nV <= 0) {
-        throw std::invalid_argument("Invalid number of vertices");
-    }
-
-    if (_coordIndex.empty()) {
-        throw std::invalid_argument("Empty coordIndex");
-    }
-
-    unordered_set<int> face;
-
-    for (int i = 0; i < _coordIndex.size(); ++i) {
-        int v = _coordIndex[i];
-
-        if (v < -1) {
-            throw std::invalid_argument("Invalid coord index");
+    try {
+        if (_nV <= 0) {
+            throw std::invalid_argument("Invalid number of vertices in Faces class");
         }
 
-        if (v == -1) {
-            if (face.size() < 3) {
-                throw std::invalid_argument("Face has less than 3 vertices");
-            }
-            face.clear();
-
-            _coordIndex[i] = -(++_nF);
-        } else {
-            if (!face.insert(v).second) {
-                throw std::invalid_argument("Repeated vertices");
-            }
-
-            if (face.size() == 1) _firstCornerFace.push_back(i);
-
-            if (v == _nV) _nV++;
+        if (_coordIndex.empty()) {
+            throw std::invalid_argument("Empty coordIndex in Faces class");
         }
+
+        unordered_set<int> face;
+
+        for (int i = 0; i < _coordIndex.size(); ++i) {
+            int v = _coordIndex[i];
+
+            if (v < -1) {
+                throw std::invalid_argument("Invalid coord index in Faces class");
+            }
+
+            if (v == -1) {
+                if (face.size() < 3) {
+                    throw std::invalid_argument("Face has less than 3 vertices");
+                }
+                face.clear();
+
+                _coordIndex[i] = -(++_nF);
+            } else {
+                if (!face.insert(v).second) {
+                    throw std::invalid_argument("Face has repeated vertices");
+                }
+
+                if (face.size() == 1) _firstCornerFace.push_back(i);
+
+                if (v == _nV) _nV++;
+            }
+        }
+    } catch (exception& e) {
+        fprintf(stderr,"ERROR | %s\n", e.what());
     }
 
 }
